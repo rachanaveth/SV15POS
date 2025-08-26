@@ -1,0 +1,252 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>POS Screen</title>
+<!--  ====================POS===================== -->
+<link rel="stylesheet" href="/product crud/bootstrap.css" />
+<style>
+  body {
+    background-color: #f5f5f5;
+    font-family: Arial, sans-serif;
+  }
+
+  .product-card {
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out;
+    text-align: center;
+  }
+
+  .product-card:hover {
+    transform: scale(1.05);
+  }
+
+  .product-card img {
+    height: 100px;
+    object-fit: contain;
+    margin-bottom: 10px;
+  }
+
+  .product-card h5 {
+    font-size: 16px;
+    margin: 5px 0;
+  }
+
+  .product-card p {
+    margin: 0;
+    font-weight: bold;
+  }
+
+  .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #ddd;
+    padding: 10px 15px;
+  }
+
+  .card-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: bold;
+  }
+
+  .table th,
+  .table td {
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .btn-danger {
+    background-color: #d9534f;
+    border: none;
+    padding: 8px 20px;
+    font-size: 14px;
+    border-radius: 5px;
+  }
+
+  .btn-primary {
+    background-color: #007bff;
+    border: none;
+    padding: 8px 20px;
+    font-size: 14px;
+    border-radius: 5px;
+  }
+
+  .total-section {
+    padding: 10px 15px;
+    border-top: 1px solid #ddd;
+    background-color: #fff;
+  }
+
+  .total-section h5 {
+    margin: 5px 0;
+  }
+</style>
+</head>
+<body>
+<div class="container-fluid mt-3">
+  <div class="row">
+    <div class="col-7">
+      <div class="row" id="main_product_card"></div>
+    </div>
+    <div class="col-5">
+      <div class="product-card" style="width: 100%;">
+        <div class="card-header">
+          <h3>Select Product</h3>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-borderless table-striped">
+              <thead class="bg-primary text-white">
+                <tr>
+                  <th>No.</th>
+                  <th>Name</th>
+                  <th>Price</th>
+                  <th>Qty</th>
+                  <th>Total</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="cart_table_body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="total-section">
+          <h5>Total: <span id="grand_total">0</span> $</h5>
+          <div class="form-group mt-2">
+            <label>Received:</label>
+            <input type="number" id="received_amount" class="form-control" placeholder="Enter amount" />
+          </div>
+          <h5 class="mt-2">Change: <span id="change_amount">0</span> $</h5>
+          <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-danger" onclick="cancelCart()">Cancel</button>
+            <button class="btn btn-primary" onclick="payNow()">Pay Now</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+  let product_list = JSON.parse(localStorage.getItem("product_list") ?? "[]").map(product => ({
+    ...product,
+    price: Number(product.price)
+  }));
+
+  let main_product_card = document.getElementById("main_product_card");
+  let cart_table_body = document.getElementById("cart_table_body");
+  let grand_total_el = document.getElementById("grand_total");
+  let change_amount_el = document.getElementById("change_amount");
+  let received_amount_el = document.getElementById("received_amount");
+
+  let cart = [];
+
+  function renderProductCard() {
+    let html_card = "";
+    if (product_list.length === 0) {
+      html_card = `<div class="col-12 text-center"><h4>No products available</h4></div>`;
+    } else {
+      product_list.forEach((product, index) => {
+        html_card += `
+          <div class="col-3 mt-3">
+            <div class="product-card" onclick="addToCart(${index})">
+              <img src="${product.image_url}" alt="${product.name}">
+              <h5>${product.name}</h5>
+              <p>${product.price} $</p>
+            </div>
+          </div>
+        `;
+      });
+    }
+    main_product_card.innerHTML = html_card;
+  }
+
+  function addToCart(index) {
+    let selectedProduct = product_list[index];
+    let existingProduct = cart.find(item => item.name === selectedProduct.name);
+
+    if (existingProduct) {
+      existingProduct.qty += 1;
+      existingProduct.total = existingProduct.qty * existingProduct.price;
+    } else {
+      cart.push({
+        name: selectedProduct.name,
+        price: selectedProduct.price,
+        qty: 1,
+        total: selectedProduct.price
+      });
+    }
+    renderCart();
+  }
+
+  function renderCart() {
+    let html = "";
+    let grand_total = 0;
+
+    cart.forEach((item, index) => {
+      grand_total += item.total;
+      html += `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${item.name}</td>
+          <td>${item.price} $</td>
+          <td>${item.qty}</td>
+          <td>${item.total} $</td>
+          <td>
+            <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${index})">❌</button>
+          </td>
+        </tr>
+      `;
+    });
+
+    cart_table_body.innerHTML = html;
+    grand_total_el.textContent = grand_total;
+    calculateChange();
+  }
+
+  function removeFromCart(index) {
+    cart.splice(index, 1);
+    renderCart();
+  }
+
+  received_amount_el.addEventListener("input", calculateChange);
+
+  function calculateChange() {
+    let received = Number(received_amount_el.value);
+    let total = Number(grand_total_el.textContent);
+    let change = received - total;
+    change_amount_el.textContent = change >= 0 ? change : 0;
+  }
+
+  function cancelCart() {
+    cart = [];
+    received_amount_el.value = "";
+    change_amount_el.textContent = "0";
+    renderCart();
+  }
+
+  function payNow() {
+    let received = Number(received_amount_el.value);
+    let total = Number(grand_total_el.textContent);
+
+    if (received < total) {
+      alert("Received amount is not enough!");
+      return;
+    }
+
+    alert("Payment successful!");
+    cancelCart();
+  }
+
+
+  renderProductCard();
+</script>
+</body>
+</html>
